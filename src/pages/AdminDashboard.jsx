@@ -11,6 +11,7 @@ export default function AdminDashboard() {
     const [mentors, setMentors] = useState([])
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState({})
+    const [approving, setApproving] = useState({})
 
     useEffect(() => {
         if (!isSuperAdmin) {
@@ -54,14 +55,28 @@ export default function AdminDashboard() {
         }
     }
 
+    async function approvePayment(sessionId) {
+        setApproving(a => ({ ...a, [sessionId]: true }))
+        try {
+            await supabase.from('sessions').update({ status: 'confirmed' }).eq('id', sessionId)
+            await fetchAllSessions()
+        } catch (e) {
+            console.error(e)
+        } finally {
+            setApproving(a => ({ ...a, [sessionId]: false }))
+        }
+    }
+
     const today = new Date()
     const upcoming = sessions.filter(s => new Date(s.scheduled_at) >= today && s.status !== 'completed')
     const past = sessions.filter(s => new Date(s.scheduled_at) < today || s.status === 'completed')
 
+    const pendingPayments = sessions.filter(s => s.status === 'pending' && s.stripe_payment_id)
+
     const stats = {
         pending: upcoming.length,
         completed: past.length,
-        revenue: sessions.reduce((acc, s) => acc + (s.price || 0), 0),
+        revenue: sessions.filter(s => s.status === 'confirmed' || s.status === 'completed').reduce((acc, s) => acc + (s.price || 0), 0),
         activeMentors: mentors.length
     }
 
@@ -133,6 +148,64 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* ===== PAYMENT APPROVALS PANEL ===== */}
+            <div className="mentor-card" style={{ marginTop: '2rem' }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    💳 Pending Payment Approvals
+                    {pendingPayments.length > 0 && (
+                        <span style={{ background: '#e74c3c', color: '#fff', borderRadius: '999px', padding: '2px 10px', fontSize: '0.8rem', fontWeight: '700' }}>
+                            {pendingPayments.length}
+                        </span>
+                    )}
+                </h2>
+
+                {loading ? (
+                    <p className="empty-msg">Loading...</p>
+                ) : pendingPayments.length === 0 ? (
+                    <p className="empty-msg">✅ No payments awaiting approval.</p>
+                ) : (
+                    <div className="session-list">
+                        {pendingPayments.map(s => (
+                            <div key={s.id} className="mentor-session-item" style={{ borderLeft: '4px solid #e74c3c' }}>
+                                <div className="session-client-info">
+                                    <h4>👤 {s.profiles?.full_name || 'Client'}</h4>
+                                    <p style={{ marginBottom: '0.25rem' }}>
+                                        {s.session_label || s.session_type} — <strong>KES {(s.price || 0).toLocaleString()}</strong>
+                                    </p>
+                                    <p style={{ marginBottom: '0.25rem' }}>
+                                        📅 {new Date(s.scheduled_at).toLocaleString()}
+                                    </p>
+                                    <p style={{ fontSize: '0.85rem', color: '#888' }}>
+                                        📧 {s.profiles?.email || 'N/A'}
+                                    </p>
+                                    <p style={{ marginTop: '0.5rem', fontFamily: 'monospace', background: 'rgba(0,0,0,0.05)', padding: '4px 10px', borderRadius: '6px', display: 'inline-block' }}>
+                                        M-Pesa Ref: <strong>{(s.stripe_payment_id || '').replace('LOOP_', '')}</strong>
+                                    </p>
+                                </div>
+                                <div className="session-actions">
+                                    <button
+                                        onClick={() => approvePayment(s.id)}
+                                        disabled={approving[s.id]}
+                                        style={{
+                                            background: approving[s.id] ? '#aaa' : '#27ae60',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            padding: '0.6rem 1.4rem',
+                                            fontWeight: '700',
+                                            cursor: approving[s.id] ? 'not-allowed' : 'pointer',
+                                            fontSize: '0.9rem',
+                                        }}
+                                    >
+                                        {approving[s.id] ? 'Approving...' : '✅ Approve Payment'}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     )
