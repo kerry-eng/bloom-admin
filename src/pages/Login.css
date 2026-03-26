@@ -1,0 +1,222 @@
+/* Login.css - Combined Nature UI + Architectural Elegance for Mentors */
+.auth-nature-container {
+    min-height: 100vh;
+    width: 100%;
+    background-image: url('/sign up background.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    font-family: var(--font-body, 'Inter', sans-serif);
+}
+
+.auth-nature-overlay {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.7) 100%);
+    z-index: 1;
+}
+
+.auth-nature-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 480px;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(40px) saturate(150%);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 32px;
+    padding: 3.5rem 3rem;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow: hidden;
+    color: #fff;
+}
+
+.transformation-inner-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.6;
+}
+
+.auth-card-main {
+    align-self: center;
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+    color: #ffffff;
+}
+
+.auth-card-title {
+    font-family: var(--font-display, 'Playfair Display', serif);
+    font-size: 2rem;
+    font-weight: 300;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+    color: #ffffff !important;
+}
+
+.auth-card-switcher {
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.auth-card-switcher button {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.3rem 1rem;
+    border-radius: 20px;
+    margin-left: 0.5rem;
+    transition: all 0.3s;
+}
+
+.auth-card-switcher button:hover {
+    background: #ffffff;
+    color: #000;
+}
+
+.auth-nature-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.nature-input-group {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    gap: 0.6rem;
+}
+
+.nature-input-group label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.nature-input-group input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    color: #ffffff;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+.nature-input-group input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.nature-submit-btn {
+    margin-top: 1rem;
+    background: #ffffff;
+    color: #000;
+    border: none;
+    border-radius: 12px;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.nature-submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.auth-social-sect {
+    margin-top: 2rem;
+}
+
+.social-divider {
+    position: relative;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.social-divider::before,
+.social-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.social-divider span {
+    padding: 0 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.5;
+}
+
+.btn-google-arch-nature {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.85rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.btn-google-arch-nature:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-google-arch-nature img {
+    width: 20px;
+}
+
+.auth-error-hint {
+    background: rgba(255, 80, 80, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.75rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: #ffcccc;
+}
+
+@media (max-width: 480px) {
+    .auth-nature-card {
+        padding: 2.5rem 1.5rem;
+    }
+}

@@ -2,8 +2,11 @@ import { Routes, Route, Navigate, Link } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import MentorDashboard from './pages/MentorDashboard'
+import AdminDashboard from './pages/AdminDashboard'
 import Mentors from './pages/Mentors'
 import ProtectedRoute from './components/ProtectedRoute'
+import DashboardLayout from './components/DashboardLayout'
+import { useState } from 'react'
 
 function App() {
   const { loading, signOut, user, isMentor, isSuperAdmin } = useAuth()
@@ -27,31 +30,30 @@ function App() {
     )
   }
 
-  return (
-    <>
-      {user && isMentor && (
-        <nav style={{ padding: '1rem', background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(10px)', position: 'sticky', top: 0, zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-lavender-light)' }}>
-          <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-            <div style={{ fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--color-text-dark)' }}>🌸 Bloom Admin</div>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <Link to="/" style={{ color: 'var(--color-text)', textDecoration: 'none', fontWeight: 500 }}>Sessions</Link>
-              {isSuperAdmin && <Link to="/mentors" style={{ color: 'var(--color-text)', textDecoration: 'none', fontWeight: 500 }}>Mentors</Link>}
-            </div>
-          </div>
-          <button className="btn btn-secondary btn-sm" onClick={signOut}>Sign Out</button>
-        </nav>
-      )}
+  const [activeView, setActiveView] = useState('overview')
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  const authenticatedContent = (
+    <DashboardLayout
+      isMobileMenuOpen={isMobileMenuOpen}
+      setIsMobileMenuOpen={setIsMobileMenuOpen}
+      activeView={activeView}
+      setActiveView={setActiveView}
+      onProfileClick={() => setActiveView('settings')}
+    >
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/" element={
-          <ProtectedRoute><MentorDashboard /></ProtectedRoute>
-        } />
-        <Route path="/mentors" element={
-          <ProtectedRoute><Mentors /></ProtectedRoute>
-        } />
+        <Route path="/" element={<ProtectedRoute>{isSuperAdmin ? <AdminDashboard /> : <MentorDashboard activeView={activeView} setActiveView={setActiveView} />}</ProtectedRoute>} />
+        <Route path="/mentors" element={<ProtectedRoute><Mentors /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </>
+    </DashboardLayout>
+  )
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="*" element={user ? authenticatedContent : <Navigate to="/login" replace />} />
+    </Routes>
   )
 }
 
