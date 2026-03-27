@@ -58,7 +58,7 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             pc.onicecandidate = (event) => {
                 if (event.candidate && channelRef.current) {
-                    channelRef.current.send({
+                    channel.send({
                         type: 'broadcast',
                         event: 'ice-candidate',
                         payload: { candidate: event.candidate, from: isMentor ? 'mentor' : 'client' }
@@ -74,9 +74,7 @@ export function useWebRTC(sessionId, isMentor = true) {
             }
 
             channel.on('broadcast', { event: 'peer-joined' }, async ({ payload }) => {
-                console.log('Peer joined:', payload)
                 channel.send({ type: 'broadcast', event: 'peer-presence', payload: { from: isMentor ? 'mentor' : 'client' } })
-                
                 if (isMentor && payload.from === 'client') {
                     const offer = await pc.createOffer()
                     await pc.setLocalDescription(offer)
@@ -86,7 +84,6 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             channel.on('broadcast', { event: 'peer-presence' }, async ({ payload }) => {
                 if (isMentor && payload.from === 'client' && !pc.localDescription) {
-                    console.log('Client presence detected, sending offer')
                     const offer = await pc.createOffer()
                     await pc.setLocalDescription(offer)
                     channel.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer } })
@@ -95,7 +92,6 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
                 if (!isMentor) {
-                    console.log('Offer received, sending answer')
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
                     const answer = await pc.createAnswer()
                     await pc.setLocalDescription(answer)
@@ -106,7 +102,6 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
                 if (isMentor) {
-                    console.log('Answer received')
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
                     processPendingCandidates()
                 }
@@ -129,7 +124,6 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             channel.subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
-                    console.log('Successfully subscribed to signaling channel')
                     channel.send({
                         type: 'broadcast',
                         event: 'peer-joined',
@@ -145,7 +139,6 @@ export function useWebRTC(sessionId, isMentor = true) {
         }
     }, [sessionId, isMentor])
 
-    // Effect to start the call only once
     useEffect(() => {
         startCall()
         return () => {
@@ -160,10 +153,8 @@ export function useWebRTC(sessionId, isMentor = true) {
         }
     }, [startCall])
 
-    // Separate effect for heartbeat to avoid loop
     useEffect(() => {
         if (callStatus !== 'connecting' && callStatus !== 'idle') return
-
         const heartbeat = setInterval(() => {
             if (channelRef.current) {
                 channelRef.current.send({
@@ -173,7 +164,6 @@ export function useWebRTC(sessionId, isMentor = true) {
                 })
             }
         }, 3000)
-
         return () => clearInterval(heartbeat)
     }, [callStatus, isMentor])
 
@@ -209,7 +199,12 @@ export function useWebRTC(sessionId, isMentor = true) {
                 const sender = peerRef.current.getSenders().find(s => s.track?.kind === 'video')
                 if (sender) sender.replaceTrack(screenTrack)
                 setIsScreenSharing(true)
-                screenTrack.onended = () => toggleScreenShare()
+                const handleStop = () => {
+                    if (screenStreamRef.current) {
+                        toggleScreenShare()
+                    }
+                }
+                screenTrack.onended = handleStop
             } catch (e) {
                 console.error("Screen share error:", e)
             }
