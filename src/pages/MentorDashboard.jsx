@@ -218,13 +218,31 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
         <div className="overview-container-arch fade-in">
             {/* Booking Alert Banner */}
             {pendingNew.length > 0 && (
-                <div className="booking-alert-banner" style={{ borderLeft: '5px solid #e74c3c' }}>
+                <div className="booking-alert-banner" style={{ borderLeft: '5px solid #e74c3c', marginBottom: '2rem' }}>
                     <span className="alert-icon">💳</span>
-                    <div>
-                        <strong>{pendingNew.length} Payment{pendingNew.length > 1 ? 's' : ''} Awaiting Approval</strong>
-                        <p>Verify M-Pesa transactions and confirm bookings to allow mentees access.</p>
+                    <div style={{ flex: 1 }}>
+                        <strong style={{ display: 'block', fontSize: '1.1rem' }}>{pendingNew.length} Payment{pendingNew.length > 1 ? 's' : ''} Awaiting Your Approval</strong>
+                        <p style={{ margin: '0.25rem 0 0.75rem', color: 'var(--color-text-mid)' }}>Verify the M-Pesa transactions and confirm these bookings.</p>
+                        
+                        <div className="pending-approvals-mini-list" style={{ background: 'rgba(0,0,0,0.03)', borderRadius: '12px', padding: '1rem' }}>
+                            {pendingNew.map(s => (
+                                <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 0', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                                    <div>
+                                        <div style={{ fontWeight: '700' }}>{s.profiles?.full_name}</div>
+                                        <div style={{ fontSize: '0.85rem', color: '#666' }}>Ref: {(s.stripe_payment_id || '').replace('LOOP_', '')}</div>
+                                    </div>
+                                    <button 
+                                        className="btn-mentor btn-mentor-primary btn-sm" 
+                                        onClick={() => confirmBooking(s.id)}
+                                        disabled={!!saving[s.id]}
+                                        style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}
+                                    >
+                                        {saving[s.id] ? '...' : '✓ CONFIRM'}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    <button className="btn-mentor-alert" onClick={() => setActiveView('schedule')}>Approve Now →</button>
                 </div>
             )}
 

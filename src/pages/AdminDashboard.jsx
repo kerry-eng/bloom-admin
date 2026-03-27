@@ -130,7 +130,17 @@ export default function AdminDashboard() {
                                                 <option value="">Unassigned</option>
                                                 {mentors.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
                                             </select>
-                                            <span>{saving[s.id] ? 'Saving...' : 'Assign Mentor'}</span>
+                                            
+                                            {(s.status === 'pending' || s.status === 'paid') && s.stripe_payment_id && (
+                                                <button 
+                                                    className="btn-mentor btn-mentor-primary btn-sm"
+                                                    onClick={() => approvePayment(s.id)}
+                                                    disabled={approving[s.id]}
+                                                    style={{ marginLeft: '1rem', background: '#27ae60', padding: '0.4rem 1rem' }}
+                                                >
+                                                    {approving[s.id] ? '...' : '✓ APPROVE'}
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
