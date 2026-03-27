@@ -17,7 +17,8 @@ function getGreeting() {
 
 function isJoinable(dateStr) {
     const diff = new Date(dateStr) - new Date()
-    return diff < 15 * 60000 && diff > -90 * 60000
+    // Joinable 15m before and up to 24 hours after (very lenient for testing and overdue sessions)
+    return diff < 15 * 60000 && diff > -24 * 60 * 60000
 }
 
 function buildMentorMessageThreads(sessionList, mentorId) {
@@ -128,13 +129,16 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
         }
     }
 
-    async function confirmBooking(sessionId) {
-        setSaving(s => ({ ...s, [sessionId]: 'confirming' }))
+    async function confirmBooking(session) {
+        setSaving(s => ({ ...s, [session.id]: 'confirming' }))
         try {
-            await supabase.from('sessions').update({ status: 'active' }).eq('id', sessionId)
+            const { error } = await supabase.from('sessions').update({ status: 'active' }).eq('id', session.id)
+            if (error) throw error
             await fetchSessions()
+            // Automatically open the video modal if it's active
+            setActiveVideoSession({ ...session, status: 'active' })
         } catch (e) { console.error(e) }
-        finally { setSaving(s => ({ ...s, [sessionId]: false })) }
+        finally { setSaving(s => ({ ...s, [session.id]: false })) }
     }
 
     async function markCompleted(sessionId) {
@@ -416,17 +420,17 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
                                     <span className={`status-badge ${s.status}`}>{s.status.toUpperCase()}</span>
                                     <div className="session-btns">
                                         {(s.status?.trim().toLowerCase() === 'paid' || s.status?.trim().toLowerCase() === 'pending') && (
-                                            <button className="btn-mentor btn-mentor-primary" onClick={() => confirmBooking(s.id)} disabled={!!saving[s.id]}>
-                                                {saving[s.id] ? '...' : '✓ CONFIRM PAYMENT'}
+                                            <button className="btn-mentor btn-mentor-primary" onClick={() => confirmBooking(s)} disabled={!!saving[s.id]}>
+                                                {saving[s.id] ? '...' : '✓ CONFIRM'}
                                             </button>
                                         )}
-                                        {s.status === 'active' && isJoinable(s.scheduled_at) && (
+                                        {s.status === 'active' && (
                                             <button className="btn-mentor btn-mentor-primary" onClick={() => setActiveVideoSession(s)}>
                                                 🎥 JOIN NOW
                                             </button>
                                         )}
-                                        {s.status === 'active' && !isJoinable(s.scheduled_at) && (
-                                            <button className="btn-mentor btn-mentor-outline" onClick={() => markCompleted(s.id)} disabled={!!saving[s.id]}>
+                                        {s.status === 'active' && (
+                                            <button className="btn-mentor btn-mentor-outline" onClick={() => markCompleted(s.id)} disabled={!!saving[s.id]} style={{ marginLeft: '0.5rem' }}>
                                                 {saving[s.id] ? '...' : 'Mark Completed'}
                                             </button>
                                         )}
