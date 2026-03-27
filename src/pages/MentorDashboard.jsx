@@ -415,7 +415,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
                                     <span className="price-tag-mentor">KES {(s.price || 0).toLocaleString()}</span>
                                     <span className={`status-badge ${s.status}`}>{s.status.toUpperCase()}</span>
                                     <div className="session-btns">
-                                        {(s.status === 'paid' || (s.status === 'pending' && s.stripe_payment_id)) && (
+                                        {(s.status === 'paid' || s.status === 'pending') && (
                                             <button className="btn-mentor btn-mentor-primary" onClick={() => confirmBooking(s.id)} disabled={!!saving[s.id]}>
                                                 {saving[s.id] ? '...' : '✓ CONFIRM PAYMENT'}
                                             </button>

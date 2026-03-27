@@ -58,7 +58,7 @@ export default function AdminDashboard() {
     async function approvePayment(sessionId) {
         setApproving(a => ({ ...a, [sessionId]: true }))
         try {
-            await supabase.from('sessions').update({ status: 'confirmed' }).eq('id', sessionId)
+            await supabase.from('sessions').update({ status: 'active' }).eq('id', sessionId)
             await fetchAllSessions()
         } catch (e) {
             console.error(e)
@@ -71,12 +71,12 @@ export default function AdminDashboard() {
     const upcoming = sessions.filter(s => s.status !== 'completed' && s.status !== 'cancelled')
     const past = sessions.filter(s => new Date(s.scheduled_at) < today || s.status === 'completed')
 
-    const pendingPayments = sessions.filter(s => (s.status === 'pending' || s.status === 'paid') && s.stripe_payment_id)
+    const pendingPayments = sessions.filter(s => (s.status === 'pending' || s.status === 'paid'))
 
     const stats = {
         pending: upcoming.length,
         completed: past.length,
-        revenue: sessions.filter(s => s.status === 'confirmed' || s.status === 'completed').reduce((acc, s) => acc + (s.price || 0), 0),
+        revenue: sessions.filter(s => s.status === 'active' || s.status === 'completed').reduce((acc, s) => acc + (s.price || 0), 0),
         activeMentors: mentors.length
     }
 
@@ -131,7 +131,7 @@ export default function AdminDashboard() {
                                                 {mentors.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
                                             </select>
                                             
-                                            {(s.status === 'pending' || s.status === 'paid') && s.stripe_payment_id && (
+                                            {(s.status === 'pending' || s.status === 'paid') && (
                                                 <button 
                                                     className="btn-mentor btn-mentor-primary btn-sm"
                                                     onClick={() => approvePayment(s.id)}
