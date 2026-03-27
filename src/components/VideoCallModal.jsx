@@ -51,7 +51,9 @@ export default function VideoCallModal({
 
     useEffect(() => {
         if (remoteVideoRef.current && remoteStream) {
+            console.log('UI: Setting remote stream to video element')
             remoteVideoRef.current.srcObject = remoteStream
+            remoteVideoRef.current.play().catch(e => console.warn("Auto-play blocked:", e))
         }
     }, [remoteStream])
 
