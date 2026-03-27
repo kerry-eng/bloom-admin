@@ -8,7 +8,7 @@ const ICE_SERVERS = {
     ]
 }
 
-export function useWebRTC(sessionId, isMentor = true) {
+export function useWebRTC(sessionId, isMentor = false) {
     const [localStream, setLocalStream] = useState(null)
     const [remoteStream, setRemoteStream] = useState(null)
     const [isMuted, setIsMuted] = useState(false)
@@ -24,6 +24,7 @@ export function useWebRTC(sessionId, isMentor = true) {
     const peerRef = useRef(null)
     const channelRef = useRef(null)
     const localStreamRef = useRef(null)
+    const dataChannelRef = useRef(null)
     const pendingCandidates = useRef([])
 
     // 1) Get and hold the local media stream permanently for the lifetime of this hook.
@@ -70,6 +71,23 @@ export function useWebRTC(sessionId, isMentor = true) {
         try {
             const pc = new RTCPeerConnection(ICE_SERVERS)
             peerRef.current = pc
+
+            const setupDataChannel = (dc) => {
+                dataChannelRef.current = dc
+                dc.onmessage = (e) => {
+                    try {
+                        const msg = JSON.parse(e.data)
+                        setMessages(prev => [...prev, msg])
+                    } catch(err) { console.warn(err) }
+                }
+            }
+
+            if (isMentor) {
+                const dc = pc.createDataChannel('chat')
+                setupDataChannel(dc)
+            } else {
+                pc.ondatachannel = (e) => setupDataChannel(e.channel)
+            }
 
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream))
 
@@ -265,6 +283,7 @@ export function useWebRTC(sessionId, isMentor = true) {
                 screenTrack.onended = handleStop
             } catch (e) {
                 console.error("Screen share error:", e)
+                alert("Screen sharing is not supported or was denied on this browser device.")
             }
         }
     }
@@ -272,7 +291,12 @@ export function useWebRTC(sessionId, isMentor = true) {
     const sendMessage = (text, senderName) => {
         const msg = { text, sender: isMentor ? 'mentor' : 'client', senderName, timestamp: new Date().toISOString() }
         setMessages(prev => [...prev, msg])
-        channelRef.current?.send({ type: 'broadcast', event: 'chat-msg', payload: msg })
+        
+        if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+            dataChannelRef.current.send(JSON.stringify(msg))
+        } else {
+            channelRef.current?.send({ type: 'broadcast', event: 'chat-msg', payload: msg })
+        }
     }
 
     const endCall = () => {

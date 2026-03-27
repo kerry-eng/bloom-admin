@@ -21,6 +21,7 @@ export default function VideoCallModal({
     const [micLevel, setMicLevel] = useState(0)
     const [soundTest, setSoundTest] = useState(false)
     const [showChat, setShowChat] = useState(false)
+    const [showSettings, setShowSettings] = useState(false)
     const [chatInput, setChatInput] = useState('')
     
     const localVideoRef = useRef(null)
@@ -169,10 +170,10 @@ export default function VideoCallModal({
                                 </button>
 
                                 <div className="control-group">
-                                    <button className={`control-btn ${showChat ? 'active' : ''}`} onClick={() => setShowChat(!showChat)} title="Chat">
+                                    <button className={`control-btn ${showChat ? 'active' : ''}`} onClick={() => {setShowChat(!showChat); setShowSettings(false);}} title="Chat">
                                         <span className="icon">💬</span>
                                     </button>
-                                    <button className="control-btn" title="Settings">
+                                    <button className={`control-btn ${showSettings ? 'active' : ''}`} onClick={() => {setShowSettings(!showSettings); setShowChat(false);}} title="Settings">
                                         <span className="icon">⚙️</span>
                                     </button>
                                 </div>
@@ -183,6 +184,19 @@ export default function VideoCallModal({
                             </div>
                         </div>
                     </div>
+
+                    {showSettings && (
+                        <div className="settings-modal" style={{position: 'absolute', bottom: '90px', right: '20px', backgroundColor: 'var(--color-bg-elevated, #2a2a35)', border: '1px solid rgba(255,255,255,0.1)', padding: '1.5rem', borderRadius: '16px', zIndex: 100, color: 'white', maxWidth: '300px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)'}}>
+                            <h3 style={{marginTop: 0, marginBottom: '0.8rem', display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem'}}>
+                                Device Settings
+                                <span style={{cursor:'pointer', color:'#aaa'}} onClick={() => setShowSettings(false)}>✕</span>
+                            </h3>
+                            <p style={{fontSize: '0.9rem', color: '#ccc', marginBottom: '1.2rem', lineHeight: 1.5}}>
+                                To switch your active Camera or Microphone, please use the site settings menu (usually a lock icon <span style={{color:'white'}}>🔒</span> next to your browser's URL bar). Permissions and hardware are managed natively by your browser for maximum privacy.
+                            </p>
+                            <button className="btn w-100" style={{background: 'rgba(255,255,255,0.1)', color: 'white', border: 'none', padding: '0.6rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, width: '100%'}} onClick={() => setShowSettings(false)}>Close</button>
+                        </div>
+                    )}
 
                     {/* Chat Sidebar */}
                     <div className={`chat-sidebar ${!showChat ? 'hidden' : ''}`}>
