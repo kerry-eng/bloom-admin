@@ -15,6 +15,9 @@ export function useWebRTC(sessionId, isMentor = true) {
     const [isCameraOff, setIsCameraOff] = useState(false)
     const [callStatus, setCallStatus] = useState('connecting')
     const [error, setError] = useState(null)
+    const [isScreenSharing, setIsScreenSharing] = useState(false)
+    const [messages, setMessages] = useState([])
+    const screenStreamRef = useRef(null)
     
     const peerRef = useRef(null)
     const channelRef = useRef(null)
@@ -27,7 +30,6 @@ export function useWebRTC(sessionId, isMentor = true) {
         setCallStatus('connecting')
 
         try {
-            // Get local media first - this should NOT block the UI
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: true, 
                 audio: true 
@@ -39,7 +41,6 @@ export function useWebRTC(sessionId, isMentor = true) {
             localStreamRef.current = stream
             setLocalStream(stream)
 
-            // Setup PC
             const pc = new RTCPeerConnection(ICE_SERVERS)
             peerRef.current = pc
 
@@ -52,7 +53,6 @@ export function useWebRTC(sessionId, isMentor = true) {
                 }
             }
 
-            // Signaling
             const channel = supabase.channel(`room-${idToUse}`)
             channelRef.current = channel
 
@@ -74,9 +74,8 @@ export function useWebRTC(sessionId, isMentor = true) {
             }
 
             channel.on('broadcast', { event: 'peer-joined' }, async ({ payload }) => {
-                // Pulse back presence
                 channel.send({ type: 'broadcast', event: 'peer-presence', payload: { from: isMentor ? 'mentor' : 'client' } })
-
+                
                 if (isMentor && payload.from === 'client') {
                     const offer = await pc.createOffer()
                     await pc.setLocalDescription(offer)
@@ -85,7 +84,6 @@ export function useWebRTC(sessionId, isMentor = true) {
             })
 
             channel.on('broadcast', { event: 'peer-presence' }, async ({ payload }) => {
-                // If I am mentor and client is present, I initiate if not already doing so
                 if (isMentor && payload.from === 'client' && !pc.localDescription) {
                     const offer = await pc.createOffer()
                     await pc.setLocalDescription(offer)
@@ -102,8 +100,7 @@ export function useWebRTC(sessionId, isMentor = true) {
                     processPendingCandidates()
                 }
             })
-            
-            // Fix: ensure we handle 'answer' event
+
             channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
                 if (isMentor) {
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
@@ -120,6 +117,10 @@ export function useWebRTC(sessionId, isMentor = true) {
                         pendingCandidates.current.push(payload.candidate)
                     }
                 }
+            })
+
+            channel.on('broadcast', { event: 'chat-msg' }, ({ payload }) => {
+                setMessages(prev => [...prev, payload])
             })
 
             channel.subscribe((status) => {
@@ -143,6 +144,7 @@ export function useWebRTC(sessionId, isMentor = true) {
         startCall()
         return () => {
             if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
+            if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop())
             if (peerRef.current) peerRef.current.close()
             if (channelRef.current) supabase.removeChannel(channelRef.current)
         }
@@ -164,5 +166,48 @@ export function useWebRTC(sessionId, isMentor = true) {
         })
     }
 
-    return { localStream, remoteStream, isMuted, isCameraOff, callStatus, error, toggleMic, toggleCamera, startCall }
+    const toggleScreenShare = async () => {
+        if (isScreenSharing) {
+            const videoTrack = localStreamRef.current.getVideoTracks()[0]
+            const sender = peerRef.current.getSenders().find(s => s.track?.kind === 'video')
+            if (sender) sender.replaceTrack(videoTrack)
+            screenStreamRef.current?.getTracks().forEach(t => t.stop())
+            screenStreamRef.current = null
+            setIsScreenSharing(false)
+        } else {
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true })
+                screenStreamRef.current = screenStream
+                const screenTrack = screenStream.getVideoTracks()[0]
+                const sender = peerRef.current.getSenders().find(s => s.track?.kind === 'video')
+                if (sender) sender.replaceTrack(screenTrack)
+                setIsScreenSharing(true)
+                screenTrack.onended = () => toggleScreenShare()
+            } catch (e) {
+                console.error("Screen share error:", e)
+            }
+        }
+    }
+
+    const sendMessage = (text, senderName) => {
+        const msg = { text, sender: isMentor ? 'mentor' : 'client', senderName, timestamp: new Date().toISOString() }
+        setMessages(prev => [...prev, msg])
+        channelRef.current?.send({ type: 'broadcast', event: 'chat-msg', payload: msg })
+    }
+
+    const endCall = () => {
+        if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
+        if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop())
+        if (peerRef.current) peerRef.current.close()
+        if (channelRef.current) supabase.removeChannel(channelRef.current)
+        setLocalStream(null)
+        setRemoteStream(null)
+        setCallStatus('ended')
+    }
+
+    return { 
+        localStream, remoteStream, isMuted, isCameraOff, isScreenSharing, messages,
+        callStatus, error, toggleMic, toggleCamera, toggleScreenShare, sendMessage, 
+        startCall, endCall 
+    }
 }

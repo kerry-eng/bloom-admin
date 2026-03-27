@@ -1,40 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { useWebRTC } from '../hooks/useWebRTC'
 import './VideoCallModal.css'
 
-export default function VideoCallModal({ session, onClose }) {
-    // Standardize the session ID for signaling
-    const sessionId = session?.id || 'instant-demo-room'
-    
-    const { 
-        localStream, 
-        remoteStream, 
-        isMuted, 
-        isCameraOff, 
-        callStatus, 
-        error,
-        toggleMic, 
-        toggleCamera,
-        startCall 
-    } = useWebRTC(sessionId, true)
-
+export default function VideoCallModal({ 
+    session, 
+    onClose, 
+    localStream, 
+    remoteStream, 
+    isMuted, 
+    isCameraOff, 
+    toggleMic, 
+    toggleCamera,
+    callStatus,
+    isMentor,
+    isScreenSharing,
+    toggleScreenShare,
+    messages = [],
+    sendMessage
+}) {
     const [timer, setTimer] = useState(0)
     const [micLevel, setMicLevel] = useState(0)
     const [soundTest, setSoundTest] = useState(false)
+    const [showChat, setShowChat] = useState(false)
+    const [chatInput, setChatInput] = useState('')
     
     const localVideoRef = useRef(null)
     const remoteVideoRef = useRef(null)
     const audioContextRef = useRef(null)
     const analyzerRef = useRef(null)
     const animationFrameRef = useRef(null)
+    const chatEndRef = useRef(null)
+
+    useEffect(() => {
+        if (showChat) chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages, showChat])
 
     useEffect(() => {
         let timerId
-        if (callStatus === 'connected' || remoteStream) {
+        if (callStatus === 'connected') {
             timerId = setInterval(() => setTimer(t => t + 1), 1000)
         }
         return () => clearInterval(timerId)
-    }, [callStatus, remoteStream])
+    }, [callStatus])
 
     useEffect(() => {
         if (localVideoRef.current && localStream) {
@@ -71,28 +77,14 @@ export default function VideoCallModal({ session, onClose }) {
                 animationFrameRef.current = requestAnimationFrame(updateLevel)
             }
             updateLevel()
-        } catch (e) { console.warn("Audio analysis failed:", e) }
+        } catch (e) { console.warn(e) }
     }
 
-    function playTestSound() {
-        // Ensure AudioContext is resumed (browser autoplay policy)
-        if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-            audioContextRef.current.resume()
-        }
-        
-        const context = audioContextRef.current || new (window.AudioContext || window.webkitAudioContext)()
-        const osc = context.createOscillator()
-        const gain = context.createGain()
-        osc.connect(gain)
-        gain.connect(context.destination)
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(440, context.currentTime)
-        gain.gain.setValueAtTime(0.1, context.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 1)
-        osc.start()
-        osc.stop(context.currentTime + 1)
-        setSoundTest(true)
-        setTimeout(() => setSoundTest(false), 1000)
+    const handleSendChat = (e) => {
+        e.preventDefault()
+        if (!chatInput.trim()) return
+        sendMessage(chatInput, isMentor ? 'Mentor' : 'Client')
+        setChatInput('')
     }
 
     const formatTime = (seconds) => {
@@ -105,45 +97,37 @@ export default function VideoCallModal({ session, onClose }) {
         <div className="video-overlay">
             <div className="video-container">
                 <div className="active-call-view">
-                    <div className="main-video-feed">
-                        {/* Always render the main view */}
-                        {!remoteStream && (
-                             <div className="connecting-view-overlay">
-                                <div className="bloom-logo-pulse">🌸</div>
-                                <h2>{callStatus === 'connecting' ? 'Preparing Workspace...' : callStatus === 'error' ? 'Media Access Needed' : 'Waiting for connection...'}</h2>
-                                <p>{error ? `Please allow camera/mic access in your browser.` : `Mentee: ${session?.profiles?.full_name || 'Guest'}`}</p>
-                                
-                                {callStatus === 'error' && (
-                                    <button className="retry-btn-arch" onClick={startCall}>
-                                        Try Again
-                                    </button>
-                                )}
+                    <div className="video-main-area">
+                        <div className="main-video-feed">
+                            <video 
+                                ref={remoteVideoRef} 
+                                autoPlay 
+                                playsInline 
+                                className={`main-video-element ${!remoteStream ? 'hidden' : ''}`}
+                            />
 
-                                <div className="mentee-avatar-placeholder" style={{ marginTop: '2rem' }}>
-                                    <div className="placeholder-circle">
-                                        <span>{session?.profiles?.full_name?.[0] || 'V'}</span>
+                            {!remoteStream && (
+                                <div className="connecting-view-overlay">
+                                    <div className="bloom-logo-pulse">🌸</div>
+                                    <h2>{callStatus === 'connecting' ? 'Preparing Your Safe Space...' : 'Waiting for connection...'}</h2>
+                                    <p>Waiting for {isMentor ? 'client' : 'mentor'} to join the room</p>
+                                    
+                                    <div className="mentee-avatar-placeholder" style={{ marginTop: '2rem' }}>
+                                        <div className="placeholder-circle">
+                                            <span>{isMentor ? 'C' : (session?.mentor?.full_name?.[0] || 'M')}</span>
+                                        </div>
+                                        <p>Ready for {isMentor ? 'client' : (session?.mentor?.full_name || 'Mentor')}</p>
                                     </div>
-                                    <p>Ready for {session?.profiles?.full_name || 'veronica'}</p>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        <video 
-                            ref={remoteVideoRef} 
-                            autoPlay 
-                            playsInline 
-                            className={`main-video-element ${!remoteStream ? 'hidden' : ''}`}
-                        />
-
-                        {/* Self View Overlay (Always attempt to show) */}
-                        <div className="self-preview">
-                            <span className="video-label">YOU (LIVE)</span>
-                            {localStream ? (
-                                <>
+                            {localStream && (
+                                <div className="self-preview">
+                                    <span className="video-label">YOU (LIVE)</span>
                                     <video 
                                         ref={localVideoRef} 
                                         autoPlay 
-                                        muted 
+                                        muted={true} 
                                         playsInline 
                                         className={`self-video-element ${isCameraOff ? 'hidden' : ''}`} 
                                     />
@@ -154,51 +138,74 @@ export default function VideoCallModal({ session, onClose }) {
                                             <div className="mic-meter-fill" style={{ height: `${Math.min(micLevel * 1.5, 100)}%` }}></div>
                                         </div>
                                     )}
-                                </>
-                            ) : (
-                                <div className="no-stream-prompt">
-                                    <span>⚠️ CAMERA OFF</span>
-                                    <button onClick={startCall}>Activate</button>
                                 </div>
                             )}
+                        </div>
+
+                        <div className="call-footer">
+                            <div className="call-info">
+                                <span className="session-tag">{session?.session_label || 'Mentorship Session'}</span>
+                                <span className="call-timer">{formatTime(timer)}</span>
+                            </div>
                             
-                            <button className="test-audio-chip" onClick={playTestSound}>
-                                {soundTest ? '🔊 TESTING...' : '🔈 TEST SPEAKERS'}
-                            </button>
+                            <div className="call-controls">
+                                <div className="control-group">
+                                    <button className={`control-btn ${isMuted ? 'disabled' : ''}`} onClick={toggleMic} title="Toggle Mute">
+                                        <span className="icon">{isMuted ? '🔇' : '🎤'}</span>
+                                    </button>
+                                    <button className={`control-btn ${isCameraOff ? 'disabled' : ''}`} onClick={toggleCamera} title="Toggle Camera">
+                                        <span className="icon">{isCameraOff ? '📵' : '📹'}</span>
+                                    </button>
+                                    <button className={`control-btn ${isScreenSharing ? 'active' : ''}`} onClick={toggleScreenShare} title="Share Screen">
+                                        <span className="icon">📺</span>
+                                    </button>
+                                </div>
+
+                                <button className="control-btn end-call" onClick={onClose}>
+                                    <span className="icon">📞</span>
+                                    <span>LEAVE</span>
+                                </button>
+
+                                <div className="control-group">
+                                    <button className={`control-btn ${showChat ? 'active' : ''}`} onClick={() => setShowChat(!showChat)} title="Chat">
+                                        <span className="icon">💬</span>
+                                    </button>
+                                    <button className="control-btn" title="Settings">
+                                        <span className="icon">⚙️</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="security-badge">
+                                🔒 Encrypted
+                            </div>
                         </div>
                     </div>
 
-                    {/* Footer with Controls */}
-                    <div className="call-footer">
-                        <div className="call-info">
-                            <span className="session-tag">{session?.session_label || 'Discovery Session'}</span>
-                            <span className="call-timer">{formatTime(timer)}</span>
+                    {/* Chat Sidebar */}
+                    <div className={`chat-sidebar ${!showChat ? 'hidden' : ''}`}>
+                        <div className="chat-header">
+                            <span>SESSION CHAT</span>
+                            <button className="close-chat" onClick={() => setShowChat(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>×</button>
                         </div>
-                        
-                        <div className="call-controls">
-                            <div className="control-group">
-                                <button className={`control-btn ${isMuted ? 'disabled' : ''}`} onClick={toggleMic}>
-                                    <span className="icon">{isMuted ? '🔇' : '🎤'}</span>
-                                </button>
-                                <button className={`control-btn ${isCameraOff ? 'disabled' : ''}`} onClick={toggleCamera}>
-                                    <span className="icon">{isCameraOff ? '📵' : '📹'}</span>
-                                </button>
-                            </div>
-
-                            <button className="control-btn end-call" onClick={onClose}>
-                                <span className="icon">📞</span>
-                                <span>LEAVE SESSION</span>
-                            </button>
-
-                            <div className="control-group">
-                                <button className="control-btn"><span className="icon">💬</span></button>
-                                <button className="control-btn"><span className="icon">⚙️</span></button>
-                            </div>
+                        <div className="chat-messages">
+                            {messages.map((m, i) => (
+                                <div key={i} className={`chat-bubble ${m.sender}`}>
+                                    <div className="chat-sender">{m.senderName || m.sender}</div>
+                                    <div className="chat-text">{m.text}</div>
+                                </div>
+                            ))}
+                            <div ref={chatEndRef} />
                         </div>
-
-                        <div className="security-badge">
-                            🔒 End-to-End Encrypted
-                        </div>
+                        <form className="chat-input-area" onSubmit={handleSendChat}>
+                            <input 
+                                type="text" 
+                                placeholder="Type a message..." 
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                            />
+                            <button type="submit" className="send-chat-btn">➔</button>
+                        </form>
                     </div>
                 </div>
             </div>

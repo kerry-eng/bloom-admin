@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabase'
 import DashboardTopbar from '../components/DashboardTopbar'
 import VideoCallModal from '../components/VideoCallModal'
+import { useWebRTC } from '../hooks/useWebRTC'
 import DirectMessagesPanel from '../components/DirectMessagesPanel'
 import './MentorDashboard.css'
 
@@ -657,11 +658,30 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
             </main>
 
             {activeVideoSession && (
-                <VideoCallModal 
+                <VideoCallWithState 
                     session={activeVideoSession} 
                     onClose={() => setActiveVideoSession(null)} 
                 />
             )}
         </div>
+    )
+}
+
+function VideoCallWithState({ session, onClose }) {
+    const webRTC = useWebRTC(session.id || 'demo', true)
+    
+    // Automatically start call when modal opens
+    useEffect(() => {
+        webRTC.startCall()
+        return () => webRTC.endCall()
+    }, [])
+
+    return (
+        <VideoCallModal 
+            session={session}
+            onClose={onClose}
+            {...webRTC}
+            isMentor={true}
+        />
     )
 }
