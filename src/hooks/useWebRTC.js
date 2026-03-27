@@ -74,6 +74,7 @@ export function useWebRTC(sessionId, isMentor = true) {
             }
 
             channel.on('broadcast', { event: 'peer-joined' }, async ({ payload }) => {
+                console.log('Peer joined:', payload)
                 channel.send({ type: 'broadcast', event: 'peer-presence', payload: { from: isMentor ? 'mentor' : 'client' } })
                 
                 if (isMentor && payload.from === 'client') {
@@ -85,6 +86,7 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             channel.on('broadcast', { event: 'peer-presence' }, async ({ payload }) => {
                 if (isMentor && payload.from === 'client' && !pc.localDescription) {
+                    console.log('Client presence detected, sending offer')
                     const offer = await pc.createOffer()
                     await pc.setLocalDescription(offer)
                     channel.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer } })
@@ -93,6 +95,7 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             channel.on('broadcast', { event: 'offer' }, async ({ payload }) => {
                 if (!isMentor) {
+                    console.log('Offer received, sending answer')
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
                     const answer = await pc.createAnswer()
                     await pc.setLocalDescription(answer)
@@ -103,6 +106,7 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
                 if (isMentor) {
+                    console.log('Answer received')
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
                     processPendingCandidates()
                 }
@@ -125,6 +129,7 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             channel.subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
+                    console.log('Successfully subscribed to signaling channel')
                     channel.send({
                         type: 'broadcast',
                         event: 'peer-joined',
@@ -142,13 +147,26 @@ export function useWebRTC(sessionId, isMentor = true) {
 
     useEffect(() => {
         startCall()
+        
+        // Presence heartbeat
+        const heartbeat = setInterval(() => {
+            if (channelRef.current && (callStatus === 'connecting' || callStatus === 'idle')) {
+                channelRef.current.send({
+                    type: 'broadcast',
+                    event: 'peer-presence',
+                    payload: { from: isMentor ? 'mentor' : 'client' }
+                })
+            }
+        }, 3000)
+
         return () => {
+            clearInterval(heartbeat)
             if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
             if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop())
             if (peerRef.current) peerRef.current.close()
             if (channelRef.current) supabase.removeChannel(channelRef.current)
         }
-    }, [startCall])
+    }, [startCall, callStatus, isMentor])
 
     const toggleMic = () => {
         setIsMuted(m => {
