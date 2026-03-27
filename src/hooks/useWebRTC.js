@@ -19,6 +19,7 @@ export function useWebRTC(sessionId, isMentor = true) {
     const peerRef = useRef(null)
     const channelRef = useRef(null)
     const localStreamRef = useRef(null)
+    const pendingCandidates = useRef([])
 
     const startCall = useCallback(async () => {
         const idToUse = sessionId || 'instant-meeting-room'
@@ -65,8 +66,27 @@ export function useWebRTC(sessionId, isMentor = true) {
                 }
             }
 
+            const processPendingCandidates = async () => {
+                while (pendingCandidates.current.length > 0) {
+                    const candidate = pendingCandidates.current.shift()
+                    await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.warn("Lazy candidate error:", e))
+                }
+            }
+
             channel.on('broadcast', { event: 'peer-joined' }, async ({ payload }) => {
+                // Pulse back presence
+                channel.send({ type: 'broadcast', event: 'peer-presence', payload: { from: isMentor ? 'mentor' : 'client' } })
+
                 if (isMentor && payload.from === 'client') {
+                    const offer = await pc.createOffer()
+                    await pc.setLocalDescription(offer)
+                    channel.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer } })
+                }
+            })
+
+            channel.on('broadcast', { event: 'peer-presence' }, async ({ payload }) => {
+                // If I am mentor and client is present, I initiate if not already doing so
+                if (isMentor && payload.from === 'client' && !pc.localDescription) {
                     const offer = await pc.createOffer()
                     await pc.setLocalDescription(offer)
                     channel.send({ type: 'broadcast', event: 'offer', payload: { sdp: offer } })
@@ -78,7 +98,8 @@ export function useWebRTC(sessionId, isMentor = true) {
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
                     const answer = await pc.createAnswer()
                     await pc.setLocalDescription(answer)
-                    channel.send({ type: 'broadcast', event: 'offer', payload: { sdp: answer } }) // Correct event is 'answer', but some signaling expects 'offer' in response? No, usually 'answer'.
+                    channel.send({ type: 'broadcast', event: 'answer', payload: { sdp: answer } })
+                    processPendingCandidates()
                 }
             })
             
@@ -86,13 +107,18 @@ export function useWebRTC(sessionId, isMentor = true) {
             channel.on('broadcast', { event: 'answer' }, async ({ payload }) => {
                 if (isMentor) {
                     await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+                    processPendingCandidates()
                 }
             })
 
             channel.on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
                 const fromOther = isMentor ? payload.from === 'client' : payload.from === 'mentor'
-                if (fromOther && payload.candidate && pc.remoteDescription) {
-                    await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(e => console.warn(e))
+                if (fromOther && payload.candidate) {
+                    if (pc.remoteDescription) {
+                        await pc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(e => console.warn(e))
+                    } else {
+                        pendingCandidates.current.push(payload.candidate)
+                    }
                 }
             })
 
