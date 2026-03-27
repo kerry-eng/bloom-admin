@@ -309,51 +309,68 @@
    MOBILE RESPONSIVE Overrides
    ============================================ */
 @media (max-width: 768px) {
+    .video-overlay {
+        padding: 0;
+    }
+
     .video-container {
-        width: 100vw;
-        height: 100vh;
-        border-radius: 0;
+        width: 100vw !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+        max-width: none !important;
+        max-height: none !important;
     }
 
     .active-call-view {
-        flex-direction: column; /* Stack video and chat (though chat occupies main area when open) */
+        flex-direction: column;
     }
 
     .self-preview {
-        width: 120px;
-        height: 80px;
-        bottom: 100px; /* Stay above footer */
-        right: 1rem;
-        border-radius: 12px;
+        width: 100px;
+        height: 140px;
+        bottom: 90px;
+        right: 12px;
+        border-radius: 8px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
     }
 
     .call-footer {
-        gap: 1rem;
-        padding: 0 1rem;
-        height: auto;
-        padding: 1rem 0;
+        gap: 0.5rem;
+        padding: 0 0.75rem;
+        height: 80px;
+        min-height: 80px;
+        justify-content: space-between;
     }
 
     .call-info {
-        display: none; /* Hide timer label to save space */
+        display: none !important; /* Hide session name/timer to avoid pushing buttons out */
     }
 
     .call-controls {
-        gap: 1rem;
+        gap: 0.5rem;
+        flex: 1;
+        justify-content: center;
     }
 
     .control-group {
-        gap: 0.5rem;
+        gap: 0.4rem;
     }
 
     .control-btn {
-        width: 38px;
-        height: 38px;
+        min-width: 40px;
+        min-height: 40px;
         font-size: 1rem;
     }
 
     .control-btn.end-call {
-        padding: 0.5rem 1rem;
+        min-width: 90px;
+        height: 40px;
+        padding: 0 1rem;
+        font-size: 0.85rem;
+    }
+
+    .security-badge {
+        display: none; /* Hide for more space */
     }
 
     .chat-sidebar {
@@ -364,8 +381,7 @@
         background: #1a1a1a;
     }
 
-    /* Adjust logo pulse size on mobile */
     .bloom-logo-pulse {
-        font-size: 2.5rem;
+        font-size: 2.2rem;
     }
 }
