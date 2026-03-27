@@ -131,7 +131,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
         setSaving(s => ({ ...s, [sessionId]: 'confirming' }))
         try {
             await supabase.from('sessions').update({ status: 'active' }).eq('id', sessionId)
-            await fetchAllData()
+            await fetchSessions()
         } catch (e) { console.error(e) }
         finally { setSaving(s => ({ ...s, [sessionId]: false })) }
     }
@@ -218,13 +218,13 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
         <div className="overview-container-arch fade-in">
             {/* Booking Alert Banner */}
             {pendingNew.length > 0 && (
-                <div className="booking-alert-banner">
-                    <span className="alert-icon">📬</span>
+                <div className="booking-alert-banner" style={{ borderLeft: '5px solid #e74c3c' }}>
+                    <span className="alert-icon">💳</span>
                     <div>
-                        <strong>{pendingNew.length} New Booking{pendingNew.length > 1 ? 's' : ''} Awaiting Confirmation</strong>
-                        <p>A mentee has paid and is waiting for your confirmation.</p>
+                        <strong>{pendingNew.length} Payment{pendingNew.length > 1 ? 's' : ''} Awaiting Approval</strong>
+                        <p>Verify M-Pesa transactions and confirm bookings to allow mentees access.</p>
                     </div>
-                    <button className="btn-mentor-alert" onClick={() => setActiveView('schedule')}>View Schedule →</button>
+                    <button className="btn-mentor-alert" onClick={() => setActiveView('schedule')}>Approve Now →</button>
                 </div>
             )}
 
@@ -363,7 +363,15 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
             <div className="sessions-list-mentor">
                 {loading ? <p className="empty-msg-arch">Loading sessions...</p>
                     : upcoming.length === 0 ? <div className="empty-state-mentor"><span>📅</span><p>No active sessions.</p></div>
-                    : upcoming.map(s => {
+                    : upcoming
+                        .sort((a, b) => {
+                            const aPending = (a.status === 'pending' || a.status === 'paid')
+                            const bPending = (b.status === 'pending' || b.status === 'paid')
+                            if (aPending && !bPending) return -1
+                            if (!aPending && bPending) return 1
+                            return new Date(a.scheduled_at) - new Date(b.scheduled_at)
+                        })
+                        .map(s => {
                         const isPastDue = new Date(s.scheduled_at) < new Date()
                         return (
                             <div key={s.id} className={`session-card-mentor ${s.status} ${isPastDue ? 'past-due' : ''}`}>
@@ -388,9 +396,9 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
                                     <span className="price-tag-mentor">KES {(s.price || 0).toLocaleString()}</span>
                                     <span className={`status-badge ${s.status}`}>{s.status.toUpperCase()}</span>
                                     <div className="session-btns">
-                                        {s.status === 'paid' && (
+                                        {(s.status === 'paid' || (s.status === 'pending' && s.stripe_payment_id)) && (
                                             <button className="btn-mentor btn-mentor-primary" onClick={() => confirmBooking(s.id)} disabled={!!saving[s.id]}>
-                                                {saving[s.id] ? '...' : '✓ CONFIRM'}
+                                                {saving[s.id] ? '...' : '✓ CONFIRM PAYMENT'}
                                             </button>
                                         )}
                                         {s.status === 'active' && isJoinable(s.scheduled_at) && (

@@ -68,10 +68,10 @@ export default function AdminDashboard() {
     }
 
     const today = new Date()
-    const upcoming = sessions.filter(s => new Date(s.scheduled_at) >= today && s.status !== 'completed')
+    const upcoming = sessions.filter(s => s.status !== 'completed' && s.status !== 'cancelled')
     const past = sessions.filter(s => new Date(s.scheduled_at) < today || s.status === 'completed')
 
-    const pendingPayments = sessions.filter(s => s.status === 'pending' && s.stripe_payment_id)
+    const pendingPayments = sessions.filter(s => (s.status === 'pending' || s.status === 'paid') && s.stripe_payment_id)
 
     const stats = {
         pending: upcoming.length,
