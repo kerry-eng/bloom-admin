@@ -71,7 +71,7 @@ export default function AdminDashboard() {
     const upcoming = sessions.filter(s => s.status !== 'completed' && s.status !== 'cancelled')
     const past = sessions.filter(s => new Date(s.scheduled_at) < today || s.status === 'completed')
 
-    const pendingPayments = sessions.filter(s => (s.status === 'pending' || s.status === 'paid'))
+    const pendingPayments = sessions.filter(s => (s.status?.toLowerCase() === 'pending' || s.status?.toLowerCase() === 'paid'))
 
     const stats = {
         pending: upcoming.length,
@@ -131,7 +131,7 @@ export default function AdminDashboard() {
                                                 {mentors.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
                                             </select>
                                             
-                                            {(s.status === 'pending' || s.status === 'paid') && (
+                                            {(s.status?.toLowerCase() === 'pending' || s.status?.toLowerCase() === 'paid') && (
                                                 <button 
                                                     className="btn-mentor btn-mentor-primary btn-sm"
                                                     onClick={() => approvePayment(s.id)}

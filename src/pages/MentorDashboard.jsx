@@ -209,7 +209,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
     const past = sessions.filter(s => s.status === 'completed' || s.status === 'cancelled')
         .sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at))
 
-    const pendingNew = sessions.filter(s => s.status === 'paid' || s.status === 'pending')
+    const pendingNew = sessions.filter(s => s.status?.toLowerCase() === 'paid' || s.status?.toLowerCase() === 'pending')
     const completedSessions = sessions.filter(s => s.status === 'completed')
     const totalRevenue = completedSessions.reduce((acc, s) => acc + (s.price || 0), 0)
 
@@ -415,7 +415,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
                                     <span className="price-tag-mentor">KES {(s.price || 0).toLocaleString()}</span>
                                     <span className={`status-badge ${s.status}`}>{s.status.toUpperCase()}</span>
                                     <div className="session-btns">
-                                        {(s.status === 'paid' || s.status === 'pending') && (
+                                        {(s.status?.toLowerCase() === 'paid' || s.status?.toLowerCase() === 'pending') && (
                                             <button className="btn-mentor btn-mentor-primary" onClick={() => confirmBooking(s.id)} disabled={!!saving[s.id]}>
                                                 {saving[s.id] ? '...' : '✓ CONFIRM PAYMENT'}
                                             </button>
