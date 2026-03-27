@@ -14,8 +14,10 @@
 }
 
 .video-container {
-    width: 80vw;
-    height: 80vh;
+    width: 90vw;
+    max-width: 1200px;
+    height: 90vh;
+    max-height: 90vh;
     background: #1a1a1a;
     border-radius: 24px;
     overflow: hidden;
@@ -23,6 +25,28 @@
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
+}
+
+.connecting-view {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.bloom-logo-pulse {
+    font-size: 4rem;
+    margin-bottom: 2rem;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.1); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 .active-call-view {
@@ -38,22 +62,28 @@
     flex-direction: column;
     position: relative;
     background: #000;
-    min-height: 0; /* Critical for flex children to shrink */
+    min-height: 0;
+    overflow: hidden;
 }
 
 .main-video-feed {
-    flex: 1;
     position: relative;
+    width: 100%;
+    /* Always leave room for the 80px footer */
+    height: calc(100% - 80px);
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    background: #000;
 }
 
 .main-video-element {
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Don't crop business meetings */
+    max-height: 100%; /* Prevent overflow outside flex container */
+    object-fit: contain;
+    display: block;
     background: #000;
 }
 
@@ -166,16 +196,21 @@
 }
 
 .call-footer {
-    height: 80px; /* Slightly taller for better touch targets */
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
     min-height: 80px;
-    background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(15,15,15,0.8));
+    flex-shrink: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(15,15,15,0.85));
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 2.5rem;
     padding: 0 1.5rem;
     border-top: 1px solid rgba(255,255,255,0.1);
-    z-index: 100;
+    z-index: 200;
     box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
 }
 
@@ -384,4 +419,16 @@
     .bloom-logo-pulse {
         font-size: 2.2rem;
     }
+}
+
+.video-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-size: 0.6rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    z-index: 11;
 }
