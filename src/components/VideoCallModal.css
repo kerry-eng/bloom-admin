@@ -14,8 +14,8 @@
 }
 
 .video-container {
-    width: 85vw;
-    height: 85vh;
+    width: 80vw;
+    height: 80vh;
     background: #1a1a1a;
     border-radius: 24px;
     overflow: hidden;
@@ -166,15 +166,16 @@
 }
 
 .call-footer {
-    height: 80px;
-    min-height: 80px;
+    height: 70px;
+    min-height: 70px;
     background: #111;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    z-index: 20;
+    justify-content: center; /* Center everything to keep it visible */
+    gap: 2rem;
+    padding: 0 1rem;
+    border-top: 1px solid #333;
+    z-index: 10;
 }
 
 .call-info { display: flex; flex-direction: column; gap: 0.2rem; }
@@ -204,13 +205,13 @@
 .control-btn.disabled { background: #ef4444; color: white; }
 
 .control-btn.end-call {
-    width: auto;
-    padding: 0 1.5rem;
-    border-radius: 24px;
-    background: #ef4444;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-    font-weight: 700;
+    background: #ff4d4d;
+    padding: 0.6rem 1.5rem;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-content: center;
 }
 
 .security-badge {
