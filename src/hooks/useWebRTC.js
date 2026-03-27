@@ -19,33 +19,59 @@ export function useWebRTC(sessionId, isMentor = true) {
     const [messages, setMessages] = useState([])
     const screenStreamRef = useRef(null)
     
+    const [needsRestart, setNeedsRestart] = useState(0)
+
     const peerRef = useRef(null)
     const channelRef = useRef(null)
     const localStreamRef = useRef(null)
     const pendingCandidates = useRef([])
 
+    // 1) Get and hold the local media stream permanently for the lifetime of this hook.
+    useEffect(() => {
+        let mounted = true
+        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .catch(async (err) => {
+                console.warn("Failed video, trying audio-only:", err)
+                return await navigator.mediaDevices.getUserMedia({ audio: true })
+            })
+            .then(stream => {
+                if (mounted) {
+                    localStreamRef.current = stream
+                    setLocalStream(stream)
+                } else {
+                    stream.getTracks().forEach(t => t.stop())
+                }
+            })
+            .catch(err => {
+                console.error("Media access error:", err)
+                if (mounted) {
+                    setError('Camera/Mic access denied. Please allow permissions.')
+                    setCallStatus('error')
+                }
+            })
+
+        return () => {
+            mounted = false
+            if (localStreamRef.current) {
+                localStreamRef.current.getTracks().forEach(t => t.stop())
+                localStreamRef.current = null
+            }
+        }
+    }, [])
+
     const startCall = useCallback(async () => {
+        if (!localStream) return // wait for media
+
         const idToUse = sessionId || 'instant-meeting-room'
         const myPeerId = isMentor ? 'mentor-signaler' : 'client-signaler'
         setError(null)
         setCallStatus('connecting')
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: true, 
-                audio: true 
-            }).catch(async (err) => {
-                console.warn("Failed video, trying audio-only:", err)
-                return await navigator.mediaDevices.getUserMedia({ audio: true })
-            })
-            
-            localStreamRef.current = stream
-            setLocalStream(stream)
-
             const pc = new RTCPeerConnection(ICE_SERVERS)
             peerRef.current = pc
 
-            stream.getTracks().forEach(track => pc.addTrack(track, stream))
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream))
 
             pc.ontrack = (event) => {
                 if (event.streams && event.streams[0]) {
@@ -59,7 +85,7 @@ export function useWebRTC(sessionId, isMentor = true) {
 
             pc.onicecandidate = (event) => {
                 if (event.candidate && channelRef.current) {
-                    channel.send({
+                    channelRef.current.send({
                         type: 'broadcast',
                         event: 'ice-candidate',
                         payload: { candidate: event.candidate, from: myPeerId }
@@ -77,6 +103,12 @@ export function useWebRTC(sessionId, isMentor = true) {
             channel.on('broadcast', { event: 'peer-joined' }, async ({ payload }) => {
                 console.log('SIGNAL: Peer joined', payload.from)
                 if (payload.from !== myPeerId) {
+                    if (pc.remoteDescription) {
+                        console.log('SIGNAL: Other peer restarted! Restarting our connection seamlessly...')
+                        setNeedsRestart(Date.now())
+                        return
+                    }
+
                     console.log('SIGNAL: Sending presence back')
                     channel.send({ type: 'broadcast', event: 'peer-presence', payload: { from: myPeerId } })
                     
@@ -153,21 +185,30 @@ export function useWebRTC(sessionId, isMentor = true) {
             setError(e.message)
             setCallStatus('error')
         }
-    }, [sessionId, isMentor])
+    }, [sessionId, isMentor, localStream])
 
     useEffect(() => {
+        if (!localStream) return
         startCall()
         return () => {
-            if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
-            if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop())
+            if (screenStreamRef.current) {
+                screenStreamRef.current.getTracks().forEach(t => t.stop())
+                screenStreamRef.current = null
+            }
             if (peerRef.current) {
                 peerRef.current.ontrack = null
                 peerRef.current.onicecandidate = null
                 peerRef.current.close()
+                peerRef.current = null
             }
-            if (channelRef.current) supabase.removeChannel(channelRef.current)
+            if (channelRef.current) {
+                supabase.removeChannel(channelRef.current)
+                channelRef.current = null
+            }
+            pendingCandidates.current = []
+            // WE DO NOT STOP localStreamRef HERE, so it stays active across restarts!
         }
-    }, [startCall])
+    }, [startCall, needsRestart, localStream])
 
     useEffect(() => {
         if (callStatus !== 'connecting' && callStatus !== 'idle') return

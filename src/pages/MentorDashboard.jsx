@@ -112,6 +112,15 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
             if (error) throw error
             setSessions(sessData || [])
 
+            // Restore active video session if it exists in sessionStorage
+            const activeId = sessionStorage.getItem('activeVideoSessionId')
+            if (activeId && sessData) {
+                const restoredSession = sessData.find(s => s.id === activeId)
+                if (restoredSession) {
+                    setActiveVideoSession(restoredSession)
+                }
+            }
+
             const pastCompleted = (sessData || []).filter(s => s.status === 'completed')
             if (pastCompleted.length > 0) {
                 const latest = pastCompleted[pastCompleted.length - 1]
@@ -129,6 +138,16 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
         }
     }
 
+    function openVideoSession(session) {
+        sessionStorage.setItem('activeVideoSessionId', session.id)
+        setActiveVideoSession(session)
+    }
+
+    function closeVideoSession() {
+        sessionStorage.removeItem('activeVideoSessionId')
+        setActiveVideoSession(null)
+    }
+
     async function confirmBooking(session) {
         setSaving(s => ({ ...s, [session.id]: 'confirming' }))
         try {
@@ -136,7 +155,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
             if (error) throw error
             await fetchSessions()
             // Automatically open the video modal if it's active
-            setActiveVideoSession({ ...session, status: 'active' })
+            openVideoSession({ ...session, status: 'active' })
         } catch (e) { console.error(e) }
         finally { setSaving(s => ({ ...s, [session.id]: false })) }
     }
@@ -288,7 +307,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
                     </div>
                 </div>
                 <div className="bio-actions">
-                    <button className="join-demo-btn-arch" onClick={() => setActiveVideoSession({ profiles: { full_name: 'Mentee Demo' }, session_label: 'Instant Meeting' })}>
+                    <button className="join-demo-btn-arch" onClick={() => openVideoSession({ id: 'demo-session', profiles: { full_name: 'Mentee Demo' }, session_label: 'Instant Meeting' })}>
                         📅 INSTANT MEETING
                     </button>
                     <button className="edit-profile-btn-arch" onClick={() => setActiveView('settings')}>EDIT PROFILE</button>
@@ -425,7 +444,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
                                             </button>
                                         )}
                                         {s.status === 'active' && (
-                                            <button className="btn-mentor btn-mentor-primary" onClick={() => setActiveVideoSession(s)}>
+                                            <button className="btn-mentor btn-mentor-primary" onClick={() => openVideoSession(s)}>
                                                 🎥 JOIN NOW
                                             </button>
                                         )}
@@ -664,7 +683,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
             {activeVideoSession && (
                 <VideoCallWithState 
                     session={activeVideoSession} 
-                    onClose={() => setActiveVideoSession(null)} 
+                    onClose={closeVideoSession} 
                 />
             )}
         </div>
