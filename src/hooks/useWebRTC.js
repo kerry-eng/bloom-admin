@@ -57,8 +57,8 @@ export function useWebRTC(sessionId, isMentor = true) {
             channelRef.current = channel
 
             pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    channel.send({
+                if (event.candidate && channelRef.current) {
+                    channelRef.current.send({
                         type: 'broadcast',
                         event: 'ice-candidate',
                         payload: { candidate: event.candidate, from: isMentor ? 'mentor' : 'client' }
@@ -145,12 +145,27 @@ export function useWebRTC(sessionId, isMentor = true) {
         }
     }, [sessionId, isMentor])
 
+    // Effect to start the call only once
     useEffect(() => {
         startCall()
-        
-        // Presence heartbeat
+        return () => {
+            if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
+            if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop())
+            if (peerRef.current) {
+                peerRef.current.ontrack = null
+                peerRef.current.onicecandidate = null
+                peerRef.current.close()
+            }
+            if (channelRef.current) supabase.removeChannel(channelRef.current)
+        }
+    }, [startCall])
+
+    // Separate effect for heartbeat to avoid loop
+    useEffect(() => {
+        if (callStatus !== 'connecting' && callStatus !== 'idle') return
+
         const heartbeat = setInterval(() => {
-            if (channelRef.current && (callStatus === 'connecting' || callStatus === 'idle')) {
+            if (channelRef.current) {
                 channelRef.current.send({
                     type: 'broadcast',
                     event: 'peer-presence',
@@ -159,14 +174,8 @@ export function useWebRTC(sessionId, isMentor = true) {
             }
         }, 3000)
 
-        return () => {
-            clearInterval(heartbeat)
-            if (localStreamRef.current) localStreamRef.current.getTracks().forEach(t => t.stop())
-            if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach(t => t.stop())
-            if (peerRef.current) peerRef.current.close()
-            if (channelRef.current) supabase.removeChannel(channelRef.current)
-        }
-    }, [startCall, callStatus, isMentor])
+        return () => clearInterval(heartbeat)
+    }, [callStatus, isMentor])
 
     const toggleMic = () => {
         setIsMuted(m => {
