@@ -51,7 +51,7 @@ export default function Login() {
 
                 <div className="auth-card-main">
                     <div className="login-brand" style={{ marginBottom: '1.5rem' }}>
-                        <span className="logo-text" style={{ color: '#fff', fontSize: '1.5rem' }}>Bloom Admin</span>
+                        <span className="logo-text" style={{ color: '#fff', fontSize: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}><img src="/LOGO.png" alt="Bloom Logo" style={{ height: '50px', width: 'auto', filter: 'brightness(0) invert(1)' }} /> Admin</span>
                     </div>
 
                     <h1 className="auth-card-title">

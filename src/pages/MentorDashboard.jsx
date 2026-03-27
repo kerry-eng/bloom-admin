@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { supabase } from '../supabase'
 import DashboardTopbar from '../components/DashboardTopbar'
 import VideoCallModal from '../components/VideoCallModal'
+import DirectMessagesPanel from '../components/DirectMessagesPanel'
 import './MentorDashboard.css'
 
 function getGreeting() {
@@ -16,6 +17,38 @@ function getGreeting() {
 function isJoinable(dateStr) {
     const diff = new Date(dateStr) - new Date()
     return diff < 15 * 60000 && diff > -90 * 60000
+}
+
+function buildMentorMessageThreads(sessionList, mentorId) {
+    if (!mentorId) return []
+
+    const threadMap = new Map()
+
+    for (const session of sessionList) {
+        if (!session.client_id) continue
+
+        const currentThread = threadMap.get(session.client_id)
+        const latestTimestamp = new Date(session.scheduled_at).getTime()
+
+        if (!currentThread || latestTimestamp > currentThread.latestTimestamp) {
+            threadMap.set(session.client_id, {
+                key: `${session.client_id}:${mentorId}`,
+                clientId: session.client_id,
+                mentorId,
+                counterpartName: session.profiles?.full_name || 'Assigned mentee',
+                counterpartEmail: session.profiles?.email || '',
+                counterpartAvatar: session.profiles?.avatar_url || '',
+                metaLine: session.session_label || session.session_type || 'Mentorship session',
+                secondaryLine: session.status ? `Session status: ${session.status}` : '',
+                latestSessionAt: session.scheduled_at,
+                latestTimestamp
+            })
+        }
+    }
+
+    return Array.from(threadMap.values())
+        .sort((a, b) => b.latestTimestamp - a.latestTimestamp)
+        .map(({ latestTimestamp, ...thread }) => thread)
 }
 
 export default function MentorDashboard({ activeView = 'overview', setActiveView }) {
@@ -504,6 +537,27 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
         )
     }
 
+    const renderMessages = () => (
+        <div className="workspace-module fade-in" style={{ padding: '1.5rem 4rem 3rem' }}>
+            <div className="module-header-mentor">
+                <div>
+                    <h2>Direct Messages</h2>
+                    <p className="subtitle-arch">Direct communication with your active mentees.</p>
+                </div>
+            </div>
+
+            <div style={{ marginTop: '2rem' }}>
+                <DirectMessagesPanel
+                    supabase={supabase}
+                    userId={user?.id}
+                    threads={buildMentorMessageThreads(sessions, user?.id)}
+                    emptyHeading="No mentee thread yet"
+                    emptyCopy="Once a mentee books a session with you, direct messaging will open here."
+                />
+            </div>
+        </div>
+    )
+
     const renderSettings = () => (
         <div className="workspace-module fade-in" style={{ padding: '1.5rem 4rem 3rem' }}>
             <div className="module-header-mentor">
@@ -563,6 +617,7 @@ export default function MentorDashboard({ activeView = 'overview', setActiveView
         switch (activeView) {
             case 'schedule': return renderSchedule()
             case 'earnings': return renderEarnings()
+            case 'messages': return renderMessages()
             case 'settings': return renderSettings()
             case 'overview':
             default: return renderOverview()
